@@ -37,8 +37,8 @@ class WebDriver:
 
                 # scrollable_div = self.driver.find_element_by_xpath(
                 #     "//*[text()='Compartir']")
-                scrollable_div = self.driver.find_element_by_class_name(
-                    "pane")
+                scrollable_div = self.driver.find_element_by_xpath(
+                    "/html/body/div[3]/div[9]/div[8]/div/div[1]/div/div/div[2]")
 
                 try:
                     # Scroll it to the bottom.
@@ -60,7 +60,7 @@ class WebDriver:
     def click_all_reviews_button(self):
         try:
             element = self.driver.find_element_by_xpath(
-                "//*[text()='Más opiniones (2,451)']")
+                "/html/body/div[3]/div[9]/div[8]/div/div[1]/div/div/div[49]/div/button")
             element.click()
 
         except:

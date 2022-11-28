@@ -1,0 +1,132 @@
+from selenium IMPORT webdriver
+
+from selenium.webdriver.common.by IMPORT By
+
+from selenium.webdriver.support.ui IMPORT WebDriverWait
+
+from selenium.webdriver.support IMPORT expected_conditions as EC
+
+from selenium.webdriver.chrome.options IMPORT Options
+
+from selenium.webdriver.common.action_chains IMPORT ActionChains
+
+from selenium.webdriver.support.ui IMPORT Select
+
+IMPORT time
+
+
+
+SET url TO "http://www.aire.cdmx.gob.mx/default.php?opc=%27aKBk%27"
+
+
+
+
+
+DEFINE CLASS WebDriver:
+
+
+
+    SET location_data TO {}
+
+
+
+    DEFINE FUNCTION __init__(self):
+
+
+
+        SET self.PATH TO "chromedriver.exe"
+
+        SET self.options TO Options()
+
+        # self.options.add_argument("--headless")
+
+        self.options.add_argument("--disable-web-security")
+
+        self.options.add_argument("--disable-site-isolation-trials")
+
+        SET self.driver TO webdriver.Chrome(self.PATH, options=self.options)
+
+
+
+    DEFINE FUNCTION click_download(self):
+
+        TRY:
+
+            SET element TO self.driver.find_element_by_class_name(
+
+                "btn")
+
+            element.click()
+
+        EXCEPT:
+
+            OUTPUT("error al presionar boton btn")
+
+            # self.driver.quit()
+
+            RETURN False
+
+        RETURN True
+
+
+
+    DEFINE FUNCTION scrape(self, url):  # Passed the URL as a variable
+
+        TRY:
+
+            # Get is a method that will tell the driver to open at that particular URL
+
+            self.driver.get(url)
+
+        except Exception as e:
+
+            self.driver.quit()
+
+            RETURN
+
+
+
+        time.sleep(3)  # Waiting FOR the page to load.
+
+
+
+        FOR i IN range(2010, 2020):
+
+            SET select TO Select(self.driver.find_element_by_id(
+
+                'seluniano'))
+
+            OUTPUT("descargando datos de ", i)
+
+            select.select_by_visible_text(str(i))
+
+
+
+            IF self.click_download():
+
+                OUTPUT("descarga de {}...".format(i))
+
+            ELSE:
+
+                OUTPUT("no descarga de {}...".format(i))
+
+            time.sleep(3)
+
+
+
+        self.driver.quit()
+
+        RETURN("fin datos")  # Returning the Scraped Data.
+
+
+
+
+
+SET x TO WebDriver()
+
+OUTPUT(x.scrape(url))
+
+
+
+SET # source_files TO "C:\Users\fnico\Downloads"
+

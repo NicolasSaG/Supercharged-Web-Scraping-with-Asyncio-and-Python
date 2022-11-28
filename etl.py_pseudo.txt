@@ -1,0 +1,232 @@
+from os.path IMPORT isfile, join
+
+IMPORT os
+
+IMPORT pandas as pd
+
+IMPORT shutil
+
+
+
+
+
+DEFINE FUNCTION get_files(year, final_txt):
+
+    SET path TO "recursos/datos/{}REDDA".format(
+
+        year[2:])
+
+    SET filenames TO [f FOR f IN os.listdir(path) IF isfile(join(path, f))]
+
+
+
+    OUTPUT("Obteniendo archivos de {}".format(path))
+
+    FOR filename IN filenames:
+
+        IF filename.endswith(final_txt):
+
+            shutil.copyfile("{}\\{}".format(path, filename),
+
+                            "recursos/datos/pph/{}".format(filename))
+
+
+
+    OUTPUT("Archivos obtenidos".format(final_txt))
+
+
+
+
+
+DEFINE FUNCTION obtener_vacios(df):
+
+    SET no_vacios TO df.dropna(how="all")
+
+    RETURN pd.merge(df, no_vacios, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
+
+
+
+
+
+# obtener archivos solicitados de los años y guardarlos en una carpeta aparte
+
+TRY:
+
+    os.mkdir("recursos/datos/pph")
+
+EXCEPT:
+
+    OUTPUT("carpeta datos_solicidatos ya existe")
+
+
+
+FOR year IN range(2010, 2020):
+
+    get_files(str(year), "PPH.xls")
+
+
+
+
+
+SET dataframes TO []
+
+SET atipicos TO []
+
+FOR year IN range(2010, 2020):
+
+    SET path TO "recursos/datos/pph/{}PPH.xls".format(year)
+
+    SET df TO pd.read_excel(path, index_col=None)
+
+    SET df.index.name TO "ID"
+
+
+
+    SET vacios TO obtener_vacios(df)
+
+    vacios.insert(loc=1, column="AÑO", value=year)
+
+    vacios.insert(loc=1, column="id_vacio", value=vacios.index)
+
+    atipicos.append(vacios)
+
+
+
+    # Se remueven filas vacias
+
+    df.dropna(how="all", inplace=True)
+
+
+
+    # Se unifican los tipos de dato de las fechas
+
+    IF df["FECHA"].dtype != "datetime64[ns]":
+
+        SET df["FECHA"] TO df["FECHA"].astype(str)
+
+        SET df["FECHA"] TO pd.to_datetime(df["FECHA"])
+
+
+
+    # Se agregan las columnas para el semana, mes y año
+
+    df.insert(loc=1, column="AÑO",
+
+              value=df["FECHA"].dt.year, allow_duplicates=False)
+
+    df.insert(loc=2, column="MES",
+
+              value=df["FECHA"].dt.month, allow_duplicates=False)
+
+    df.insert(loc=3, column="SEMANA",
+
+              value=df["FECHA"].dt.isocalendar().week, allow_duplicates=False)
+
+
+
+    dataframes.append(df)
+
+
+
+# concatenar nulos
+
+SET join_atipicos TO pd.concat(atipicos).reset_index(drop=True)
+
+SET path TO 'recursos/datos/pph/{}'.format("atipicos.csv")
+
+join_atipicos.to_csv(path, index=True)
+
+
+
+# Se concatenan los dataframes
+
+SET join_table TO pd.concat(dataframes).reset_index(drop=True)
+
+
+
+# Leemos estaciones.csv
+
+SET path TO "recursos/datos/{}".format("estaciones.csv")
+
+SET stations TO pd.read_csv(path, index_col=None)
+
+SET df_stations TO pd.DataFrame(stations)
+
+SET locations TO dict(
+
+    zip(list(df_stations["Clave"]), list(df_stations["Estación"])))
+
+
+
+# creacion de archivo bitacora para guardar eliminaciones de los otros archivos, inconsistencias, etc
+
+SET bitacora_col TO ['elemento', 'fecha', 'año',
+
+                'mes', 'semana', 'localizacion', 'medicion']
+
+SET dt_bt TO pd.DataFrame(columns=bitacora_col)
+
+SET dt_nulos TO pd.DataFrame(columns=bitacora_col)
+
+OUTPUT('Escribiendo tabla de hechos...')
+
+SET count TO 0
+
+SET count_nulos TO 0
+
+FOR index IN range(0, len(join_table)):
+
+    FOR col_title IN join_table.columns.values[4:]:
+
+        SET row_data TO [
+
+            "Precipitación pluvial",
+
+            join_table.iloc[index]["FECHA"],
+
+            join_table.iloc[index]["AÑO"],
+
+            join_table.iloc[index]["MES"],
+
+            join_table.iloc[index]["SEMANA"],
+
+            locations[col_title],
+
+            join_table.iloc[index][col_title]
+
+        ]
+
+        if(join_table.iloc[index][col_title] != -99.0):
+
+            SET dt_bt.loc[count] TO row_data
+
+            count += 1
+
+        ELSE:
+
+            SET dt_nulos.loc[count_nulos] TO row_data
+
+            count_nulos += 1
+
+    SET dt_bt.index.name TO "ID"
+
+    SET dt_nulos.index.name TO "ID"
+
+
+
+# Escritura de tabla de hechos en archivo bitacora.csv
+
+SET path TO 'recursos/datos/pph/{}'.format("bitacora.csv")
+
+dt_bt.to_csv(path, index=True)
+
+
+
+SET path TO 'recursos/datos/pph/{}'.format("nulos.csv")
+
+dt_nulos.to_csv(path, index=True)
+
+
+
+OUTPUT('Completo')
+

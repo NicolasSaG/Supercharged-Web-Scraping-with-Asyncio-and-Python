@@ -4,6 +4,7 @@ import pandas as pd
 from requests_html import HTML
 
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
 url = 'https://www.spoonflower.com/es/mercado?on=fabric'
@@ -14,7 +15,8 @@ def scraper(url):
     options.add_argument("--headless")
     options.add_argument("--disable-web-security")
     options.add_argument("--disable-site-isolation-trials")
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+    # driver = webdriver.Chrome(options=options)
     driver.get(url)
     return driver.page_source
 
@@ -28,7 +30,7 @@ def extract_id_slug(url_path):
 
 
 content = scraper(url)
-
+print(content)
 html_r = HTML(html=content)
 # print(html_r.links)
 fabric_links = [x for x in list(
